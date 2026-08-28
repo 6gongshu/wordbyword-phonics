@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Word by Word 自然拼读单词卡</title>
+<style>
+:root{
+  --bg:#f0f6ff; --card:#fff; --ink:#233; --sub:#6b7a90; --accent:#4f7cff; --accent2:#ff7b54;
+  --good:#2ecc71; --bad:#e74c3c; --radius:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+header{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,#4f7cff,#7c5cff);color:#fff;padding:14px 16px;box-shadow:0 2px 12px rgba(0,0,0,.15)}
+header h1{font-size:18px;display:flex;align-items:center;gap:8px}
+header .sub{font-size:12px;opacity:.85;margin-top:2px}
+.tabs{display:flex;gap:8px;margin-top:10px}
+.tab{flex:1;text-align:center;padding:8px 0;border-radius:10px;background:rgba(255,255,255,.15);color:#fff;font-size:14px;cursor:pointer;border:none;font-weight:600}
+.tab.active{background:#fff;color:var(--accent)}
+#controls{position:sticky;top:64px;z-index:10;background:var(--bg);padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#controls select,#controls button{font-size:14px;padding:7px 12px;border-radius:10px;border:1px solid #d5e0f0;background:#fff;color:var(--ink);cursor:pointer}
+#controls .spacer{flex:1}
+#wordCount{font-size:13px;color:var(--sub)}
+main{padding:12px 16px 90px;max-width:900px;margin:0 auto}
+/* ---- word grid ---- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{background:var(--card);border-radius:var(--radius);padding:14px 12px;box-shadow:0 2px 8px rgba(30,60,120,.08);cursor:pointer;transition:transform .1s;border:2px solid transparent}
+.card:active{transform:scale(.96)}
+.card .word{font-size:19px;font-weight:700;color:#2b3a55;word-break:break-all}
+.card .phon{font-size:13px;color:var(--sub);margin-top:3px}
+.card .cn{font-size:13.5px;color:#3d4c63;margin-top:6px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card .play{display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:12px;color:var(--accent);background:#eef4ff;padding:4px 9px;border-radius:20px;font-weight:600}
+.card .play .spk{font-size:14px}
+.card .tag{display:inline-block;font-size:11px;background:#fff3e8;color:#c96a2e;border-radius:6px;padding:2px 6px;margin-top:6px;margin-right:4px}
+/* ---- quiz ---- */
+#quiz{display:none}
+.qbox{background:var(--card);border-radius:var(--radius);padding:22px 18px;box-shadow:0 2px 12px rgba(30,60,120,.08);text-align:center;max-width:520px;margin:8px auto}
+.qtype{font-size:13px;color:var(--sub);margin-bottom:12px}
+.qprompt{font-size:22px;font-weight:700;margin:14px 0;line-height:1.4;word-break:break-word}
+.qprompt .bigword{font-size:30px}
+.speakbtn{background:var(--accent);color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:28px;cursor:pointer;box-shadow:0 4px 14px rgba(79,124,255,.4);margin:6px auto 14px;display:flex;align-items:center;justify-content:center}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.opt{border:2px solid #dde7f7;background:#fff;border-radius:12px;padding:14px 8px;font-size:17px;font-weight:600;cursor:pointer;transition:all .12s;color:#2b3a55}
+.opt:active{transform:scale(.96)}
+.opt.right{background:var(--good);color:#fff;border-color:var(--good)}
+.opt.wrong{background:var(--bad);color:#fff;border-color:var(--bad)}
+.qmeta{display:flex;justify-content:space-between;margin-top:16px;font-size:13px;color:var(--sub)}
+#result{display:none;text-align:center;padding:30px 16px}
+#result h2{font-size:22px;margin-bottom:8px}
+#result .score{font-size:40px;font-weight:800;color:var(--accent);margin:12px 0}
+#result .mistakeList{margin:16px auto;max-width:460px;text-align:left}
+.mistake-item{display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:10px;padding:10px 14px;margin:6px 0;box-shadow:0 1px 6px rgba(0,0,0,.06);cursor:pointer}
+.mistake-item .w{font-weight:700}
+.mistake-item .c{color:var(--sub);font-size:13px}
+.btn{padding:12px 26px;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.ghost{background:#e8effd;color:var(--accent)}
+#toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:rgba(20,30,50,.9);color:#fff;padding:10px 22px;border-radius:30px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:99}
+#toast.show{opacity:1}
+.searchwrap{position:relative;flex:1;min-width:120px}
+#search{padding:8px 12px;border-radius:10px;border:1px solid #d5e0f0;font-size:14px;width:100%}
+</style>
+</head>
+<body>
+<header>
+  <h1>📖 Word by Word 自然拼读单词卡</h1>
+  <div class="sub">Word by Word Primary Phonics Picture Dictionary · 点单词听发音</div>
+  <div class="tabs">
+    <button class="tab active" id="tabLearn" onclick="switchTab('learn')">📚 学单词</button>
+    <button class="tab" id="tabQuiz" onclick="switchTab('quiz')">✏️ 背一背</button>
+  </div>
+</header>
+
+<div id="controls">
+  <div class="searchwrap"><input id="search" placeholder="🔍 搜索单词..." oninput="renderLearn()"></div>
+  <select id="groupSel" onchange="renderLearn()"><option value="all">全部单词</option></select>
+  <div class="spacer"></div>
+  <span id="wordCount"></span>
+</div>
+
+<main>
+  <div id="learn" class="grid"></div>
+
+  <div id="quiz">
+    <div class="qbox">
+      <div class="qtype" id="qTypeLabel"></div>
+      <div id="qPrompt" class="qprompt"></div>
+      <button class="speakbtn" id="speakBtn" onclick="speakCurrent()">🔊</button>
+      <div class="options" id="options"></div>
+      <div class="qmeta">
+        <span id="qIdx"></span>
+        <span id="qScore"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="result">
+    <h2>🎉 完成!</h2>
+    <div class="score" id="scoreNum"></div>
+    <p id="scoreDetail" style="color:var(--sub)"></p>
+    <div style="margin:18px 0">
+      <button class="btn primary" onclick="restartQuiz()">🔁 再测一遍</button>
+      <button class="btn ghost" onclick="retryMistakes()">❌ 只测错题</button>
+    </div>
+    <div class="mistakeList" id="mistakeList"></div>
+  </div>
+</main>
+<div id="toast"></div>
+
+<script src="words.js"></script>
+<script src="words.js"></script>
+<script>
+/* ======== data injected at build time ======== */
+const WORDS = WORDS_DATA;
+const GROUP_FROM_WORD = null; /* optional function name */
+
+/* ======== state ======== */
+let curGroup = 'all';
+let quiz = null; /* {words, idx, score, wrong[], mode, answered} */
+
+/* ======== audio ======== */
+const audioCache = {};
+function playWord(word, variant){
+  const paths = [`audio/${word}_${variant}.mp3`];
+  const tryPlay = (i) => {
+    if(i >= paths.length) return;
+    const a = audioCache[paths[i]] || (audioCache[paths[i]] = new Audio(paths[i]));
+    a.onerror = () => tryPlay(i+1);
+    a.play().catch(() => tryPlay(i+1));
+  };
+  tryPlay(0);
+}
+function speakWord(word){
+  if(word.phonetic) playWord(word.word, 'us');
+  else { const u = new SpeechSynthesisUtterance(word.word); u.lang='en-US'; speechSynthesis.cancel(); speechSynthesis.speak(u); }
+}
+
+/* ======== learn view ======== */
+function groups(){
+  const m = {};
+  WORDS.forEach(w => { (w.groups||['其他']).forEach(g => { (m[g] = m[g] || []).push(w); }); });
+  return m;
+}
+function initGroups(){
+  const sel = document.getElementById('groupSel');
+  const g = groups();
+  sel.innerHTML = '<option value="all">全部单词</option>';
+  Object.keys(g).sort().forEach(k => {
+    const o = document.createElement('option'); o.value = k; o.textContent = `${k} (${g[k].length})`; sel.appendChild(o);
+  });
+}
+function visibleWords(){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const g = groups();
+  let list = curGroup === 'all' ? WORDS : (g[curGroup] || []);
+  if(q) list = list.filter(w => w.word.includes(q) || (w.cn||[]).join(' ').includes(q));
+  return list;
+}
+function renderLearn(){
+  const list = visibleWords();
+  document.getElementById('wordCount').textContent = `${list.length} 词`;
+  const el = document.getElementById('learn');
+  el.innerHTML = list.map(w => `
+    <div class="card" onclick="speakWord(WORDS_BY_ID['${w.word}'])">
+      <div class="word">${w.word}</div>
+      <div class="phon">${w.us||w.uk||''}</div>
+      <div class="cn">${(w.cn||[]).join('；')}</div>
+      <span class="play"><span class="spk">🔊</span> 听发音</span>
+    </div>`).join('');
+}
+const WORDS_BY_ID = {}; WORDS.forEach(w => WORDS_BY_ID[w.word] = w);
+
+/* ======== quiz ======== */
+function switchTab(t){
+  document.getElementById('tabLearn').classList.toggle('active', t==='learn');
+  document.getElementById('tabQuiz').classList.toggle('active', t==='quiz');
+  document.getElementById('learn').style.display = t==='learn' ? '' : 'none';
+  document.getElementById('controls').style.display = t==='learn' ? '' : 'none';
+  document.getElementById('quiz').style.display = t==='quiz' ? '' : 'none';
+  document.getElementById('result').style.display = 'none';
+  if(t==='quiz' && !quiz) startQuiz('all');
+}
+const MODES = [
+  {id:'en2cn', label:'英文 → 中文', build: q => { q.prompt=`<span class="bigword">${q.cur.word}</span>`; q.opts = pickOpts(q, 3, w=>w.cn.join('；')); q.answer=q.cur.cn.join('；'); q.speak=true; }},
+  {id:'cn2en', label:'中文 → 英文', build: q => { q.prompt=q.cur.cn.join('；'); q.opts = pickOpts(q, 3, w=>w.word); q.answer=q.cur.word; q.speak=false; }},
+  {id:'listen', label:'听音选词', build: q => { q.prompt=`<span class="bigword">?</span>`; q.opts = pickOpts(q, 3, w=>w.word); q.answer=q.cur.word; q.speak=true; }},
+];
+function pickOpts(q, nWrong, labelFn){
+  const wrongs = WORDS.filter(w => w.word !== q.cur.word).sort(()=>Math.random()-.5).slice(0,nWrong);
+  const all = wrongs.concat([q.cur]).sort(()=>Math.random()-.5);
+  return all.map(w => ({label: labelFn(w), correct: w.word===q.cur.word}));
+}
+function startQuiz(scope){
+  let pool;
+  if(scope === 'mistakes' && quiz && quiz.wrong.length) pool = quiz.wrong.map(w=>w.word);
+  else pool = visibleWords().map(w=>w.word);
+  if(pool.length < 4){ toast('单词太少,至少需要 4 个词'); return; }
+  quiz = { words: pool.slice().sort(()=>Math.random()-.5), idx: 0, score: 0, wrong: [], mode: 0 };
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('quiz').style.display = '';
+  nextQuestion();
+}
+function nextQuestion(){
+  if(quiz.idx >= quiz.words.length){ showResult(); return; }
+  const w = WORDS_BY_ID[quiz.words[quiz.idx]];
+  const mode = MODES[quiz.mode];
+  const q = {cur: w};
+  mode.build(q);
+  quiz.cur = q;
+  document.getElementById('qTypeLabel').textContent = `第 ${quiz.idx+1}/${quiz.words.length} 题 · ${mode.label}`;
+  document.getElementById('qPrompt').innerHTML = q.prompt;
+  document.getElementById('options').innerHTML = q.opts.map((o,i)=>`<button class="opt" id="opt${i}" onclick="answer(${i})">${o.label}</button>`).join('');
+  document.getElementById('qIdx').textContent = `第 ${quiz.idx+1} / ${quiz.words.length} 题`;
+  document.getElementById('qScore').textContent = `✅ ${quiz.score}`;
+  quiz.answered = false;
+  if(q.speak) setTimeout(speakCurrent, 400);
+}
+function speakCurrent(){
+  const q = quiz.cur;
+  if(!q) return;
+  const audioUrl = `audio/${q.cur.word}_us.mp3`;
+  const a = audioCache[audioUrl] || (audioCache[audioUrl] = new Audio(audioUrl));
+  a.onerror = () => { const u = new SpeechSynthesisUtterance(q.cur.word); u.lang='en-US'; speechSynthesis.cancel(); speechSynthesis.speak(u); };
+  a.play().catch(() => { const u = new SpeechSynthesisUtterance(q.cur.word); u.lang='en-US'; speechSynthesis.cancel(); speechSynthesis.speak(u); });
+}
+function answer(i){
+  if(quiz.answered) return;
+  quiz.answered = true;
+  const q = quiz.cur;
+  const ok = q.opts[i].correct;
+  document.getElementById(`opt${i}`).classList.add(ok?'right':'wrong');
+  q.opts.forEach((o, j) => { if(o.correct && j!==i) document.getElementById(`opt${j}`).classList.add('right'); });
+  if(ok) quiz.score++;
+  else quiz.wrong.push(q.cur);
+  setTimeout(() => { quiz.idx++; nextQuestion(); }, 700);
+}
+function showResult(){
+  document.getElementById('quiz').style.display = 'none';
+  const r = document.getElementById('result');
+  r.style.display = '';
+  document.getElementById('scoreNum').textContent = `${quiz.score} / ${quiz.words.length}`;
+  document.getElementById('scoreDetail').textContent = `正确率 ${Math.round(100*quiz.score/quiz.words.length)}%`;
+  const ml = document.getElementById('mistakeList');
+  ml.innerHTML = quiz.wrong.length ? '<div style="font-weight:700;margin:8px 0">📌 错题本(点一下听发音)</div>' + quiz.wrong.map(w=>`
+    <div class="mistake-item" onclick="speakWord(WORDS_BY_ID['${w.word}'])">
+      <span class="w">${w.word}</span>
+      <span class="c">${(WORDS_BY_ID[w.word].cn||[]).join('；')}</span>
+    </div>`).join('') : '<p style="color:var(--good);font-weight:700">🏆 全部答对,太棒了!</p>';
+}
+function restartQuiz(){ startQuiz('all'); }
+function retryMistakes(){ startQuiz('mistakes'); }
+
+/* ======== misc ======== */
+function toast(t){ const e = document.getElementById('toast'); e.textContent=t; e.classList.add('show'); setTimeout(()=>e.classList.remove('show'), 1800); }
+document.getElementById('groupSel').addEventListener('change', e => curGroup = e.target.value);
+
+initGroups();
+renderLearn();
+</script>
+</body>
+</html>

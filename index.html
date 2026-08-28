@@ -38,6 +38,13 @@ main{padding:12px 16px 90px;max-width:960px;margin:0 auto}
 .fcard .cn{font-size:12.5px;color:#3d4c63;margin-top:4px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .fcard .play{display:inline-flex;align-items:center;gap:3px;margin-top:6px;font-size:11.5px;color:var(--accent);background:#eef4ff;padding:3px 8px;border-radius:20px;font-weight:600}
 .fcard .noimg{height:110px;display:flex;align-items:center;justify-content:center;background:#f1f5fb;border-radius:8px;color:#b0bfd4;font-size:26px}
+.plays{display:flex;gap:6px;justify-content:center;margin-top:6px}
+.play{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:var(--accent);background:#eef4ff;padding:3px 8px;border-radius:20px;font-weight:600;cursor:pointer}
+.play.uk{background:#fff0e8;color:#d97b29}
+.play.us{background:#eef4ff;color:var(--accent)}
+.phon2{font-size:12px;color:var(--sub);margin-top:3px}
+.phon2 .uk{color:#d97b29}
+.phon2 .us{color:#4f7cff}
 /* ---- word grid ---- */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .card{background:var(--card);border-radius:var(--radius);padding:14px 12px;box-shadow:0 2px 8px rgba(30,60,120,.08);cursor:pointer;transition:transform .1s;border:2px solid transparent}
@@ -60,6 +67,19 @@ main{padding:12px 16px 90px;max-width:960px;margin:0 auto}
 .opt.right{background:var(--good);color:#fff;border-color:var(--good)}
 .opt.wrong{background:var(--bad);color:#fff;border-color:var(--bad)}
 .qmeta{display:flex;justify-content:space-between;margin-top:16px;font-size:13px;color:var(--sub)}
+.spellwrap{margin-top:14px}
+.spellinput{width:100%;padding:14px;font-size:24px;text-align:center;border:2px solid #dde7f7;border-radius:12px;outline:none;font-weight:700;letter-spacing:2px;color:#2b3a55}
+.spellinput:focus{border-color:var(--accent)}
+.spellinput.right{border-color:var(--good);background:#f0fff4}
+.spellinput.wrong{border-color:var(--bad);background:#fff5f5}
+.spellcheckbtn{margin-top:12px;width:100%;padding:13px;border:none;border-radius:12px;font-size:17px;font-weight:700;background:var(--accent);color:#fff;cursor:pointer}
+.spellfb{margin-top:12px;font-size:16px;font-weight:700;min-height:24px}
+.spellfb.right{color:var(--good)}
+.spellfb.wrong{color:var(--bad)}
+.spellfb .ans{color:var(--sub);font-weight:600}
+.speakrow{display:flex;gap:10px;justify-content:center;margin:6px auto 14px}
+.speakbtn{background:var(--accent);color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:28px;cursor:pointer;box-shadow:0 4px 14px rgba(79,124,255,.4);display:flex;align-items:center;justify-content:center}
+.speakbtn.uk{background:#ff9f43;box-shadow:0 4px 14px rgba(255,159,67,.4);width:56px;height:56px;font-size:20px;border-radius:50%}
 #result{display:none;text-align:center;padding:30px 16px}
 #result h2{font-size:22px;margin-bottom:8px}
 #result .score{font-size:40px;font-weight:800;color:var(--accent);margin:12px 0}
@@ -107,12 +127,23 @@ main{padding:12px 16px 90px;max-width:960px;margin:0 auto}
   <div id="learn" class="grid" style="display:none"></div>
 
   <div id="quiz" style="display:none">
+    <div id="quizModes" style="display:flex;gap:6px;overflow-x:auto;padding:6px 2px 10px;scrollbar-width:none"></div>
     <div class="qbox">
       <div class="qtype" id="qTypeLabel"></div>
       <img class="qimg" id="qImg" alt="" style="display:none">
       <div id="qPrompt" class="qprompt"></div>
-      <button class="speakbtn" id="speakBtn" onclick="speakCurrent()">🔊</button>
+      <div class="speakrow">
+        <button class="speakbtn" id="speakBtn" onclick="speakCurrent('us')">🔊</button>
+        <button class="speakbtn uk" id="speakBtnUk" onclick="speakCurrent('uk')">🇬🇧</button>
+      </div>
       <div class="options" id="options"></div>
+      <div id="spellArea" style="display:none">
+        <div class="spellwrap">
+          <input id="spellInput" class="spellinput" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off" enterkeyhint="done" placeholder="✏️ 在这里输入单词" onkeydown="if(event.key==='Enter'){event.preventDefault();checkSpell();}">
+          <button class="spellcheckbtn" onclick="checkSpell()">✅ 确认答案</button>
+          <div class="spellfb" id="spellFb"></div>
+        </div>
+      </div>
       <div class="qmeta">
         <span id="qIdx"></span>
         <span id="qScore"></span>
@@ -171,9 +202,12 @@ function renderFam(){
           <div class="fcard" onclick="playWord('${w.word}','us')">
             ${w.img ? `<img src="${w.img}" alt="${w.word}" loading="lazy">` : `<div class="noimg">🖼️</div>`}
             <div class="build">${w.build ? `${w.build.replace('+', ' + ')} <span class="eq">=</span> <span style="color:#2b3a55">${w.word}</span>` : w.word}</div>
-            <div class="phon">${w.us||w.uk||''}</div>
+            <div class="phon2">${w.uk ? `<span class="uk">英 /${w.uk}/</span>` : ''} ${w.us ? `<span class="us">美 /${w.us}/</span>` : ''}</div>
             <div class="cn">${w.cn.join('；')}</div>
-            <span class="play">🔊 听发音</span>
+            <div class="plays">
+              <span class="play uk" onclick="event.stopPropagation();playWord('${w.word}','uk')">🇬🇧 英音</span>
+              <span class="play us" onclick="event.stopPropagation();playWord('${w.word}','us')">🇺🇸 美音</span>
+            </div>
           </div>`).join('')}
       </div>
     </div>`).join('');
@@ -205,9 +239,12 @@ function renderLearn(){
   document.getElementById('learn').innerHTML = list.map(w => `
     <div class="card" onclick="playWord('${w.word}','us')">
       <div class="word">${w.word}</div>
-      <div class="phon">${w.us||w.uk||''}</div>
+      <div class="phon2">${w.uk ? `<span class="uk">英 /${w.uk}/</span>` : ''} ${w.us ? `<span class="us">美 /${w.us}/</span>` : ''}</div>
       <div class="cn">${(w.cn||[]).join('；')}</div>
-      <span class="play">🔊 听发音</span>
+      <div class="plays">
+        <span class="play uk" onclick="event.stopPropagation();playWord('${w.word}','uk')">🇬🇧 英音</span>
+        <span class="play us" onclick="event.stopPropagation();playWord('${w.word}','us')">🇺🇸 美音</span>
+      </div>
     </div>`).join('');
 }
 
@@ -222,10 +259,21 @@ function switchTab(t){
   if(t==='quiz' && !quiz) startQuiz('all');
 }
 let quiz = null;
+function renderQuizModes(){
+  document.getElementById('quizModes').innerHTML = MODES.map((m,i) =>
+    `<button class="famchip ${quiz && quiz.mode===i ? 'active' : ''}" onclick="setQuizMode(${i})">${m.label}</button>`).join('');
+}
+function setQuizMode(i){
+  quiz.mode = i;
+  renderQuizModes();
+  startQuiz('all');
+}
 const MODES = [
   {id:'en2cn', label:'英文 → 中文', build: q => { q.prompt=`<span class="bigword">${q.cur.word}</span>`; q.opts = pickOpts(q, 3, w=>w.cn.join('；')); q.answer=q.cur.cn.join('；'); q.speak=true; q.img=imgOf(q.cur); }},
   {id:'cn2en', label:'中文 → 英文', build: q => { q.prompt=q.cur.cn.join('；'); q.opts = pickOpts(q, 3, w=>w.word); q.answer=q.cur.word; q.speak=false; q.img=''; }},
   {id:'listen', label:'听音选词', build: q => { q.prompt=`<span class="bigword">?</span>`; q.opts = pickOpts(q, 3, w=>w.word); q.answer=q.cur.word; q.speak=true; q.img=imgOf(q.cur); }},
+  {id:'spell_listen', label:'✍️ 听音拼写(键盘输入)', build: q => { q.prompt=`<span class="bigword">🔊 听发音,拼出单词</span>`; q.spell=true; q.speak=true; q.img=imgOf(q.cur); }},
+  {id:'spell_cn', label:'✍️ 中文拼写(键盘输入)', build: q => { q.prompt=`<span class="bigword">${q.cur.cn[0]}</span>`; q.spell=true; q.speak=false; q.img=''; }},
 ];
 function imgOf(w){
   for(const f of FAMILIES){ const it = f.words.find(x=>x.word===w.word); if(it && it.img) return it.img; }
@@ -241,7 +289,9 @@ function startQuiz(scope){
   if(scope === 'mistakes' && quiz && quiz.wrong.length) pool = quiz.wrong.map(w=>w.word);
   else pool = visibleWords().map(w=>w.word);
   if(pool.length < 4){ toast('单词太少,至少需要 4 个词'); return; }
-  quiz = { words: pool.slice().sort(()=>Math.random()-.5), idx: 0, score: 0, wrong: [], mode: 0 };
+  const prevMode = quiz ? quiz.mode : 0;
+  quiz = { words: pool.slice().sort(()=>Math.random()-.5), idx: 0, score: 0, wrong: [], mode: prevMode };
+  renderQuizModes();
   document.getElementById('result').style.display = 'none';
   document.getElementById('quiz').style.display = '';
   nextQuestion();
@@ -256,15 +306,53 @@ function nextQuestion(){
   document.getElementById('qPrompt').innerHTML = q.prompt;
   const qimg = document.getElementById('qImg');
   if(q.img){ qimg.src = q.img; qimg.style.display = 'block'; } else qimg.style.display = 'none';
+  const spellArea = document.getElementById('spellArea');
+  if(q.spell){
+    document.getElementById('options').style.display = 'none';
+    spellArea.style.display = '';
+    const inp = document.getElementById('spellInput');
+    inp.value = '';
+    inp.className = 'spellinput';
+    document.getElementById('spellFb').innerHTML = '';
+    document.getElementById('spellFb').className = 'spellfb';
+    document.getElementById('qIdx').textContent = `第 ${quiz.idx+1} / ${quiz.words.length} 题`;
+    document.getElementById('qScore').textContent = `✅ ${quiz.score}`;
+    quiz.answered = false;
+    if(q.speak) setTimeout(() => { speakCurrent('us'); setTimeout(()=>{ try{inp.focus();}catch(e){} }, 400); }, 400);
+    else setTimeout(()=>{ try{inp.focus();}catch(e){} }, 300);
+    return;
+  }
+  document.getElementById('options').style.display = '';
+  spellArea.style.display = 'none';
   document.getElementById('options').innerHTML = q.opts.map((o,i)=>`<button class="opt" id="opt${i}" onclick="answer(${i})">${o.label}</button>`).join('');
   document.getElementById('qIdx').textContent = `第 ${quiz.idx+1} / ${quiz.words.length} 题`;
   document.getElementById('qScore').textContent = `✅ ${quiz.score}`;
   quiz.answered = false;
   if(q.speak) setTimeout(speakCurrent, 400);
 }
-function speakCurrent(){
+function speakCurrent(variant){
   const q = quiz.cur; if(!q) return;
-  playWord(q.cur.word, 'us');
+  playWord(q.cur.word, variant || 'us');
+}
+function checkSpell(){
+  if(quiz.answered) return;
+  quiz.answered = true;
+  const q = quiz.cur;
+  const inp = document.getElementById('spellInput');
+  const user = inp.value.trim().toLowerCase();
+  const ok = user === q.cur.word;
+  const fb = document.getElementById('spellFb');
+  inp.className = 'spellinput ' + (ok ? 'right' : 'wrong');
+  if(ok){
+    fb.className = 'spellfb right';
+    fb.innerHTML = `✅ 正确!${q.cur.word} ${q.cur.cn[0]}`;
+    quiz.score++;
+  } else {
+    fb.className = 'spellfb wrong';
+    fb.innerHTML = `❌ 你写的是「${user||'空'}」,正确答案是 <span class="ans">${q.cur.word}</span> · ${q.cur.cn[0]}`;
+    quiz.wrong.push(q.cur);
+  }
+  setTimeout(() => { quiz.idx++; nextQuestion(); }, ok ? 1000 : 2200);
 }
 function answer(i){
   if(quiz.answered) return;

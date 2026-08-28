@@ -271,6 +271,11 @@ function setQuizMode(i){
 const MODES = [
   {id:'dictation', label:'📝 单词默写', build: q => {
     q.prompt=`<span class="bigword">${q.cur.cn[0]||q.cur.word}</span>` +
+      `<div class="phon2" style="font-size:16px;margin-top:8px">` +
+        (q.cur.uk?`<span class="uk">英 /${q.cur.uk}/</span>`:'') +
+        (q.cur.uk&&q.cur.us?'　':'') +
+        (q.cur.us?`<span class="us">美 /${q.cur.us}/</span>`:'') +
+      `</div>` +
       (q.cur.cn.length>1 ? `<div style="font-size:13px;color:var(--sub);font-weight:400;margin-top:6px;line-height:1.5">${q.cur.cn.slice(1).join('；')}</div>` : '');
     q.spell=true; q.speak=true; q.img='';
   }},

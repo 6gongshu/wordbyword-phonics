@@ -269,11 +269,16 @@ function setQuizMode(i){
   startQuiz('all');
 }
 const MODES = [
+  {id:'dictation', label:'📝 单词默写', build: q => {
+    q.prompt=`<span class="bigword">${q.cur.cn[0]||q.cur.word}</span>` +
+      (q.cur.cn.length>1 ? `<div style="font-size:13px;color:var(--sub);font-weight:400;margin-top:6px;line-height:1.5">${q.cur.cn.slice(1).join('；')}</div>` : '');
+    q.spell=true; q.speak=true; q.img='';
+  }},
   {id:'en2cn', label:'英文 → 中文', build: q => { q.prompt=`<span class="bigword">${q.cur.word}</span>`; q.opts = pickOpts(q, 3, w=>w.cn.join('；')); q.answer=q.cur.cn.join('；'); q.speak=true; q.img=imgOf(q.cur); }},
   {id:'cn2en', label:'中文 → 英文', build: q => { q.prompt=q.cur.cn.join('；'); q.opts = pickOpts(q, 3, w=>w.word); q.answer=q.cur.word; q.speak=false; q.img=''; }},
   {id:'listen', label:'听音选词', build: q => { q.prompt=`<span class="bigword">?</span>`; q.opts = pickOpts(q, 3, w=>w.word); q.answer=q.cur.word; q.speak=true; q.img=imgOf(q.cur); }},
-  {id:'spell_listen', label:'✍️ 听音拼写(键盘输入)', build: q => { q.prompt=`<span class="bigword">🔊 听发音,拼出单词</span>`; q.spell=true; q.speak=true; q.img=imgOf(q.cur); }},
-  {id:'spell_cn', label:'✍️ 中文拼写(键盘输入)', build: q => { q.prompt=`<span class="bigword">${q.cur.cn[0]}</span>`; q.spell=true; q.speak=false; q.img=''; }},
+  {id:'spell_listen', label:'✍️ 听音拼写', build: q => { q.prompt=`<span class="bigword">🔊 听发音,拼出单词</span>`; q.spell=true; q.speak=true; q.img=imgOf(q.cur); }},
+  {id:'spell_cn', label:'✍️ 中文拼写', build: q => { q.prompt=`<span class="bigword">${q.cur.cn[0]}</span>`; q.spell=true; q.speak=false; q.img=''; }},
 ];
 function imgOf(w){
   for(const f of FAMILIES){ const it = f.words.find(x=>x.word===w.word); if(it && it.img) return it.img; }
@@ -285,11 +290,19 @@ function pickOpts(q, nWrong, labelFn){
   return all.map(w => ({label: labelFn(w), correct: w.word===q.cur.word}));
 }
 function startQuiz(scope){
+  const prevMode = quiz ? quiz.mode : 0;
   let pool;
   if(scope === 'mistakes' && quiz && quiz.wrong.length) pool = quiz.wrong.map(w=>w.word);
-  else pool = visibleWords().map(w=>w.word);
+  else {
+    const searching = document.getElementById('search').value.trim() !== '' || curGroup !== 'all';
+    if(MODES[prevMode].spell && !searching){
+      // spelling modes default to the 102 phonics family words (right difficulty)
+      pool = [...new Set(FAMILIES.flatMap(f => f.words.map(w => w.word)))];
+    } else {
+      pool = visibleWords().map(w=>w.word);
+    }
+  }
   if(pool.length < 4){ toast('单词太少,至少需要 4 个词'); return; }
-  const prevMode = quiz ? quiz.mode : 0;
   quiz = { words: pool.slice().sort(()=>Math.random()-.5), idx: 0, score: 0, wrong: [], mode: prevMode };
   renderQuizModes();
   document.getElementById('result').style.display = 'none';

@@ -98,6 +98,11 @@ main{padding:12px 16px 90px;max-width:960px;margin:0 auto}
 #famNav::-webkit-scrollbar{display:none}
 .famchip{flex:0 0 auto;background:#fff;border:1px solid #d5e0f0;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#3d4c63}
 .famchip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.qnav{display:flex;gap:8px;justify-content:center;margin-top:16px}
+.qnavbtn{flex:1;max-width:150px;padding:11px 0;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;background:#eef4ff;color:var(--accent);transition:transform .1s}
+.qnavbtn:active{transform:scale(.96)}
+.qnavbtn.showans{background:#fff3e6;color:#d97b29}
+.qnavbtn:disabled{opacity:.4}
 </style>
 </head>
 <body>
@@ -144,6 +149,11 @@ main{padding:12px 16px 90px;max-width:960px;margin:0 auto}
           <div class="spellfb" id="spellFb"></div>
         </div>
       </div>
+      <div class="qnav">
+        <button class="qnavbtn" onclick="navQ(-1)">⬅️ 上一题</button>
+        <button class="qnavbtn showans" id="showAnsBtn" onclick="showAnswer()">👀 看答案</button>
+        <button class="qnavbtn" onclick="navQ(1)">下一题 ➡️</button>
+      </div>
       <div class="qmeta">
         <span id="qIdx"></span>
         <span id="qScore"></span>
@@ -164,8 +174,8 @@ main{padding:12px 16px 90px;max-width:960px;margin:0 auto}
 </main>
 <div id="toast"></div>
 
-<script src="words.js?v=3"></script>
-<script src="families.js?v=3"></script>
+<script src="words.js?v=4"></script>
+<script src="families.js?v=4"></script>
 <script>
 const WORDS = WORDS_DATA;
 const WORDS_BY_ID = {}; WORDS.forEach(w => WORDS_BY_ID[w.word] = w);
@@ -306,7 +316,7 @@ function startQuiz(scope){
     }
   }
   if(pool.length < 4){ toast('单词太少,至少需要 4 个词'); return; }
-  quiz = { words: pool.slice().sort(()=>Math.random()-.5), idx: 0, score: 0, wrong: [], mode: prevMode };
+  quiz = { words: pool.slice().sort(()=>Math.random()-.5), idx: 0, score: 0, wrong: [], mode: prevMode, states: {} };
   renderQuizModes();
   document.getElementById('result').style.display = 'none';
   document.getElementById('quiz').style.display = '';
@@ -318,33 +328,54 @@ function nextQuestion(){
   const q = {cur: w};
   MODES[quiz.mode].build(q);
   quiz.cur = q;
+  const st = quiz.states[quiz.idx] || (quiz.states[quiz.idx] = {answered:false, showed:false, ok:false});
   document.getElementById('qTypeLabel').textContent = `第 ${quiz.idx+1}/${quiz.words.length} 题 · ${MODES[quiz.mode].label}`;
   document.getElementById('qPrompt').innerHTML = q.prompt;
   const qimg = document.getElementById('qImg');
   if(q.img){ qimg.src = q.img; qimg.style.display = 'block'; } else qimg.style.display = 'none';
+  const showBtn = document.getElementById('showAnsBtn');
+  if(st.answered) showBtn.disabled = true; else showBtn.disabled = false;
   const spellArea = document.getElementById('spellArea');
   if(q.spell){
     document.getElementById('options').style.display = 'none';
     spellArea.style.display = '';
     const inp = document.getElementById('spellInput');
-    inp.value = '';
-    inp.className = 'spellinput';
-    document.getElementById('spellFb').innerHTML = '';
-    document.getElementById('spellFb').className = 'spellfb';
+    const chkBtn = document.querySelector('.spellcheckbtn');
+    const fb = document.getElementById('spellFb');
+    if(st.answered){
+      // 回看已答题:显示结果,禁用作答
+      inp.value = st.user || '';
+      inp.disabled = true; chkBtn.disabled = true;
+      inp.className = 'spellinput ' + (st.ok ? 'right' : 'wrong');
+      fb.className = 'spellfb ' + (st.ok ? 'right' : 'wrong');
+      fb.innerHTML = st.showed ? `👀 已看答案 · 正确答案是 <span class="ans">${q.cur.word}</span> · ${q.cur.cn[0]}`
+        : (st.ok ? `✅ 正确!${q.cur.word} ${q.cur.cn[0]}` : `❌ 你写的是「${st.user||'空'}」,正确答案是 <span class="ans">${q.cur.word}</span> · ${q.cur.cn[0]}`);
+    } else {
+      inp.value = ''; inp.disabled = false; chkBtn.disabled = false;
+      inp.className = 'spellinput'; fb.innerHTML = ''; fb.className = 'spellfb';
+    }
     document.getElementById('qIdx').textContent = `第 ${quiz.idx+1} / ${quiz.words.length} 题`;
     document.getElementById('qScore').textContent = `✅ ${quiz.score}`;
-    quiz.answered = false;
-    if(q.speak) setTimeout(() => { speakCurrent('us'); setTimeout(()=>{ try{inp.focus();}catch(e){} }, 400); }, 400);
-    else setTimeout(()=>{ try{inp.focus();}catch(e){} }, 300);
+    quiz.answered = st.answered;
+    if(!st.answered){
+      if(q.speak) setTimeout(() => { speakCurrent('us'); setTimeout(()=>{ try{inp.focus();}catch(e){} }, 400); }, 400);
+      else setTimeout(()=>{ try{inp.focus();}catch(e){} }, 300);
+    }
     return;
   }
   document.getElementById('options').style.display = '';
   spellArea.style.display = 'none';
   document.getElementById('options').innerHTML = q.opts.map((o,i)=>`<button class="opt" id="opt${i}" onclick="answer(${i})">${o.label}</button>`).join('');
+  if(st.answered){
+    // 回看已答题:高亮当时的选择
+    const correctIdx = q.opts.findIndex(o=>o.correct);
+    document.getElementById(`opt${correctIdx}`).classList.add('right');
+    if(!st.ok && st.userIdx !== undefined) document.getElementById(`opt${st.userIdx}`).classList.add('wrong');
+  }
   document.getElementById('qIdx').textContent = `第 ${quiz.idx+1} / ${quiz.words.length} 题`;
   document.getElementById('qScore').textContent = `✅ ${quiz.score}`;
-  quiz.answered = false;
-  if(q.speak) setTimeout(speakCurrent, 400);
+  quiz.answered = st.answered;
+  if(q.speak && !st.answered) setTimeout(speakCurrent, 400);
 }
 function speakCurrent(variant){
   const q = quiz.cur; if(!q) return;
@@ -357,8 +388,12 @@ function checkSpell(){
   const inp = document.getElementById('spellInput');
   const user = inp.value.trim().toLowerCase();
   const ok = user === q.cur.word;
+  const st = quiz.states[quiz.idx];
+  st.answered = true; st.ok = ok; st.user = user; st.showed = false;
   const fb = document.getElementById('spellFb');
   inp.className = 'spellinput ' + (ok ? 'right' : 'wrong');
+  document.querySelector('.spellcheckbtn').disabled = true;
+  document.getElementById('showAnsBtn').disabled = true;
   if(ok){
     fb.className = 'spellfb right';
     fb.innerHTML = `✅ 正确!${q.cur.word} ${q.cur.cn[0]}`;
@@ -368,24 +403,63 @@ function checkSpell(){
     fb.innerHTML = `❌ 你写的是「${user||'空'}」,正确答案是 <span class="ans">${q.cur.word}</span> · ${q.cur.cn[0]}`;
     quiz.wrong.push(q.cur);
   }
-  setTimeout(() => { quiz.idx++; nextQuestion(); }, ok ? 1000 : 2200);
+  document.getElementById('qScore').textContent = `✅ ${quiz.score}`;
 }
 function answer(i){
   if(quiz.answered) return;
   quiz.answered = true;
   const q = quiz.cur;
   const ok = q.opts[i].correct;
+  const st = quiz.states[quiz.idx];
+  st.answered = true; st.ok = ok; st.userIdx = i; st.showed = false;
   document.getElementById(`opt${i}`).classList.add(ok?'right':'wrong');
   q.opts.forEach((o, j) => { if(o.correct && j!==i) document.getElementById(`opt${j}`).classList.add('right'); });
+  document.getElementById('showAnsBtn').disabled = true;
   if(ok) quiz.score++; else quiz.wrong.push(q.cur);
-  setTimeout(() => { quiz.idx++; nextQuestion(); }, 700);
+  document.getElementById('qScore').textContent = `✅ ${quiz.score}`;
+}
+function navQ(d){
+  if(!quiz) return;
+  const ni = quiz.idx + d;
+  if(ni < 0){ toast('已经是第一题'); return; }
+  if(ni >= quiz.words.length){
+    if(d > 0 && quiz.states[quiz.idx] && quiz.states[quiz.idx].answered){
+      quiz.idx = quiz.words.length;
+      nextQuestion();  // 触发结果页
+    } else {
+      toast('最后一题啦,先确认答案再看结果');
+    }
+    return;
+  }
+  quiz.idx = ni;
+  nextQuestion();
+}
+function showAnswer(){
+  if(!quiz || quiz.answered) return;
+  quiz.answered = true;
+  const q = quiz.cur;
+  const st = quiz.states[quiz.idx];
+  st.answered = true; st.showed = true; st.ok = false; st.user = '';
+  document.getElementById('showAnsBtn').disabled = true;
+  if(q.spell){
+    const inp = document.getElementById('spellInput');
+    inp.value = q.cur.word;
+    inp.disabled = true; inp.className = 'spellinput wrong';
+    document.querySelector('.spellcheckbtn').disabled = true;
+    const fb = document.getElementById('spellFb');
+    fb.className = 'spellfb wrong';
+    fb.innerHTML = `👀 答案: <span class="ans">${q.cur.word}</span> · ${q.cur.cn[0]}`;
+  } else {
+    q.opts.forEach((o, j) => { if(o.correct) document.getElementById(`opt${j}`).classList.add('right'); });
+  }
 }
 function showResult(){
   document.getElementById('quiz').style.display = 'none';
   const r = document.getElementById('result');
   r.style.display = '';
   document.getElementById('scoreNum').textContent = `${quiz.score} / ${quiz.words.length}`;
-  document.getElementById('scoreDetail').textContent = `正确率 ${Math.round(100*quiz.score/quiz.words.length)}%`;
+  const nShow = Object.values(quiz.states).filter(s => s.showed).length;
+  document.getElementById('scoreDetail').textContent = `正确率 ${Math.round(100*quiz.score/quiz.words.length)}%` + (nShow ? ` · 👀 看过答案 ${nShow} 题` : '');
   const ml = document.getElementById('mistakeList');
   ml.innerHTML = quiz.wrong.length ? '<div style="font-weight:700;margin:8px 0">📌 错题本(点一下听发音)</div>' + quiz.wrong.map(w=>`
     <div class="mistake-item" onclick="playWord('${w.word}','us')">

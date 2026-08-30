@@ -49,7 +49,8 @@ main{padding:12px 16px 90px;max-width:960px;margin:0 auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .card{background:var(--card);border-radius:var(--radius);padding:14px 12px;box-shadow:0 2px 8px rgba(30,60,120,.08);cursor:pointer;transition:transform .1s;border:2px solid transparent}
 .card:active{transform:scale(.96)}
-.card .word{font-size:19px;font-weight:700;color:#2b3a55;word-break:break-all}
+.card img{width:100%;height:105px;object-fit:contain;background:#f8fbff;border-radius:10px;margin-bottom:6px}
+.card .noimg{height:105px;display:flex;align-items:center;justify-content:center;background:#f1f5fb;border-radius:10px;color:#b0bfd4;font-size:24px;margin-bottom:6px}
 .card .phon{font-size:13px;color:var(--sub);margin-top:3px}
 .card .cn{font-size:13.5px;color:#3d4c63;margin-top:6px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .card .play{display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:12px;color:var(--accent);background:#eef4ff;padding:4px 9px;border-radius:20px;font-weight:600}
@@ -237,6 +238,7 @@ function renderLearn(){
   document.getElementById('wordCount').textContent = `${list.length} 词`;
   document.getElementById('learn').innerHTML = list.map(w => `
     <div class="card" onclick="playWord('${w.word}','us')">
+      ${w.img ? `<img src="${w.img}" alt="${w.word}" loading="lazy">` : `<div class="noimg">🖼️</div>`}
       <div class="word">${w.word}</div>
       <div class="phon2">${w.uk ? `<span class="uk">英 /${w.uk}/</span>` : ''} ${w.us ? `<span class="us">美 /${w.us}/</span>` : ''}</div>
       <div class="cn">${(w.cn||[]).join('；')}</div>
@@ -276,18 +278,15 @@ const MODES = [
         (q.cur.us?`<span class="us">美 /${q.cur.us}/</span>`:'') +
       `</div>` +
       (q.cur.cn.length>1 ? `<div style="font-size:13px;color:var(--sub);font-weight:400;margin-top:6px;line-height:1.5">${q.cur.cn.slice(1).join('；')}</div>` : '');
-    q.spell=true; q.speak=true; q.img='';
+    q.spell=true; q.speak=true; q.img=imgOf(q.cur);
   }},
   {id:'en2cn', label:'英文 → 中文', build: q => { q.prompt=`<span class="bigword">${q.cur.word}</span>`; q.opts = pickOpts(q, 3, w=>w.cn.join('；')); q.answer=q.cur.cn.join('；'); q.speak=true; q.img=imgOf(q.cur); }},
   {id:'cn2en', label:'中文 → 英文', build: q => { q.prompt=q.cur.cn.join('；'); q.opts = pickOpts(q, 3, w=>w.word); q.answer=q.cur.word; q.speak=false; q.img=''; }},
   {id:'listen', label:'听音选词', build: q => { q.prompt=`<span class="bigword">?</span>`; q.opts = pickOpts(q, 3, w=>w.word); q.answer=q.cur.word; q.speak=true; q.img=imgOf(q.cur); }},
   {id:'spell_listen', label:'✍️ 听音拼写', build: q => { q.prompt=`<span class="bigword">🔊 听发音,拼出单词</span>`; q.spell=true; q.speak=true; q.img=imgOf(q.cur); }},
-  {id:'spell_cn', label:'✍️ 中文拼写', build: q => { q.prompt=`<span class="bigword">${q.cur.cn[0]}</span>`; q.spell=true; q.speak=false; q.img=''; }},
+  {id:'spell_cn', label:'✍️ 中文拼写', build: q => { q.prompt=`<span class="bigword">${q.cur.cn[0]}</span>`; q.spell=true; q.speak=false; q.img=imgOf(q.cur); }},
 ];
-function imgOf(w){
-  for(const f of FAMILIES){ const it = f.words.find(x=>x.word===w.word); if(it && it.img) return it.img; }
-  return '';
-}
+function imgOf(w){ return (w && w.img) ? w.img : ''; }
 function pickOpts(q, nWrong, labelFn){
   const wrongs = WORDS.filter(w => w.word !== q.cur.word).sort(()=>Math.random()-.5).slice(0,nWrong);
   const all = wrongs.concat([q.cur]).sort(()=>Math.random()-.5);

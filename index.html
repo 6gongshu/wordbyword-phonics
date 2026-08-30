@@ -112,7 +112,7 @@ main{padding:12px 16px 90px;max-width:960px;margin:0 auto}
 <body>
 <header>
   <h1>📖 Word by Word 自然拼读单词卡</h1>
-  <div class="sub">Word by Word Primary Phonics Picture Dictionary · 词族拼读 · 点卡片听发音 · v5</div>
+  <div class="sub">Word by Word Primary Phonics Picture Dictionary · 词族拼读 · 点卡片听发音 · v6</div>
   <div class="tabs">
     <button class="tab active" id="tabFam" onclick="switchTab('fam')">🧩 词族拼读</button>
     <button class="tab" id="tabLearn" onclick="switchTab('learn')">📚 全部单词</button>
@@ -179,8 +179,8 @@ main{padding:12px 16px 90px;max-width:960px;margin:0 auto}
 </main>
 <div id="toast"></div>
 
-<script src="words.js?v=5"></script>
-<script src="families.js?v=5"></script>
+<script src="words.js?v=6"></script>
+<script src="families.js?v=6"></script>
 <script>
 const WORDS = WORDS_DATA;
 const WORDS_BY_ID = {}; WORDS.forEach(w => WORDS_BY_ID[w.word] = w);
@@ -465,6 +465,11 @@ function showAnswer(){
   const ansCard = document.getElementById('ansCard');
   ansCard.style.display = 'block';
   ansCard.innerHTML = `<div class="alabel">👀 答案</div><div class="aword">${q.cur.word}</div><div class="acn">${q.cur.cn[0]}</div>`;
+  // 防误触:答案卡弹出会移动按钮位置,800ms 内锁住导航按钮,避免连点误触"下一题"
+  const navBtns = document.querySelectorAll('.qnavbtn');
+  navBtns.forEach(b => b.disabled = true);
+  setTimeout(() => { navBtns.forEach(b => { if(b.id !== 'showAnsBtn') b.disabled = false; }); }, 800);
+  toast('👀 答案已显示,抄完点下一题');
   if(q.spell){
     const inp = document.getElementById('spellInput');
     inp.value = q.cur.word;

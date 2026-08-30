@@ -103,6 +103,10 @@ main{padding:12px 16px 90px;max-width:960px;margin:0 auto}
 .qnavbtn:active{transform:scale(.96)}
 .qnavbtn.showans{background:#fff3e6;color:#d97b29}
 .qnavbtn:disabled{opacity:.4}
+.anscard{background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;border-radius:14px;padding:14px 12px;margin:10px auto 4px;max-width:420px;text-align:center;box-shadow:0 4px 14px rgba(46,204,113,.35)}
+.anscard .alabel{font-size:13px;opacity:.9;font-weight:700;letter-spacing:2px}
+.anscard .aword{font-size:30px;font-weight:800;margin:4px 0 2px;letter-spacing:1px}
+.anscard .acn{font-size:15px;opacity:.95}
 </style>
 </head>
 <body>
@@ -135,6 +139,7 @@ main{padding:12px 16px 90px;max-width:960px;margin:0 auto}
     <div id="quizModes" style="display:flex;gap:6px;overflow-x:auto;padding:6px 2px 10px;scrollbar-width:none"></div>
     <div class="qbox">
       <div class="qtype" id="qTypeLabel"></div>
+      <div id="ansCard" class="anscard" style="display:none"></div>
       <img class="qimg" id="qImg" alt="" style="display:none">
       <div id="qPrompt" class="qprompt"></div>
       <div class="speakrow">
@@ -174,8 +179,8 @@ main{padding:12px 16px 90px;max-width:960px;margin:0 auto}
 </main>
 <div id="toast"></div>
 
-<script src="words.js?v=4"></script>
-<script src="families.js?v=4"></script>
+<script src="words.js?v=5"></script>
+<script src="families.js?v=5"></script>
 <script>
 const WORDS = WORDS_DATA;
 const WORDS_BY_ID = {}; WORDS.forEach(w => WORDS_BY_ID[w.word] = w);
@@ -335,6 +340,18 @@ function nextQuestion(){
   if(q.img){ qimg.src = q.img; qimg.style.display = 'block'; } else qimg.style.display = 'none';
   const showBtn = document.getElementById('showAnsBtn');
   if(st.answered) showBtn.disabled = true; else showBtn.disabled = false;
+  const ansCard = document.getElementById('ansCard');
+  if(st.answered && (st.showed || st.ok || st.user !== undefined)){
+    ansCard.style.display = 'block';
+    ansCard.innerHTML = st.showed
+      ? `<div class="alabel">👀 答案</div><div class="aword">${q.cur.word}</div><div class="acn">${q.cur.cn[0]}</div>`
+      : (st.ok
+        ? `<div class="alabel">✅ 回答正确</div><div class="aword">${q.cur.word}</div><div class="acn">${q.cur.cn[0]}</div>`
+        : `<div class="alabel">❌ 正确答案</div><div class="aword">${q.cur.word}</div><div class="acn">${q.cur.cn[0]}</div>`);
+  } else {
+    ansCard.style.display = 'none';
+    ansCard.innerHTML = '';
+  }
   const spellArea = document.getElementById('spellArea');
   if(q.spell){
     document.getElementById('options').style.display = 'none';
@@ -394,13 +411,17 @@ function checkSpell(){
   inp.className = 'spellinput ' + (ok ? 'right' : 'wrong');
   document.querySelector('.spellcheckbtn').disabled = true;
   document.getElementById('showAnsBtn').disabled = true;
+  const ansCard = document.getElementById('ansCard');
+  ansCard.style.display = 'block';
   if(ok){
     fb.className = 'spellfb right';
     fb.innerHTML = `✅ 正确!${q.cur.word} ${q.cur.cn[0]}`;
+    ansCard.innerHTML = `<div class="alabel">✅ 回答正确</div><div class="aword">${q.cur.word}</div><div class="acn">${q.cur.cn[0]}</div>`;
     quiz.score++;
   } else {
     fb.className = 'spellfb wrong';
     fb.innerHTML = `❌ 你写的是「${user||'空'}」,正确答案是 <span class="ans">${q.cur.word}</span> · ${q.cur.cn[0]}`;
+    ansCard.innerHTML = `<div class="alabel">❌ 正确答案</div><div class="aword">${q.cur.word}</div><div class="acn">${q.cur.cn[0]}</div>`;
     quiz.wrong.push(q.cur);
   }
   document.getElementById('qScore').textContent = `✅ ${quiz.score}`;
@@ -441,6 +462,9 @@ function showAnswer(){
   const st = quiz.states[quiz.idx];
   st.answered = true; st.showed = true; st.ok = false; st.user = '';
   document.getElementById('showAnsBtn').disabled = true;
+  const ansCard = document.getElementById('ansCard');
+  ansCard.style.display = 'block';
+  ansCard.innerHTML = `<div class="alabel">👀 答案</div><div class="aword">${q.cur.word}</div><div class="acn">${q.cur.cn[0]}</div>`;
   if(q.spell){
     const inp = document.getElementById('spellInput');
     inp.value = q.cur.word;
@@ -448,7 +472,7 @@ function showAnswer(){
     document.querySelector('.spellcheckbtn').disabled = true;
     const fb = document.getElementById('spellFb');
     fb.className = 'spellfb wrong';
-    fb.innerHTML = `👀 答案: <span class="ans">${q.cur.word}</span> · ${q.cur.cn[0]}`;
+    fb.innerHTML = `照着抄一遍,再点下一题`;
   } else {
     q.opts.forEach((o, j) => { if(o.correct) document.getElementById(`opt${j}`).classList.add('right'); });
   }
